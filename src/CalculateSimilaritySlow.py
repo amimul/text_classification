@@ -45,6 +45,7 @@ if __name__ == '__main__':
         similarity = inner_products / norm_matrix  # 1 * test_len matrix
 
         if similarities.size > 0:
+            # TBF: use scipy.sparse.vstack instead
             similarities = np.vstack((similarities, similarity.todense()))
         else:
             similarities = similarity.todense()

@@ -4,6 +4,8 @@ category x is chosen when: score(x) / score(top) > alpha (alpha is a constant be
 score are calculated by looking at k-nearest neighbors
 decide alpha by minimizing: error = average_num_of_categories_predicted - average_num_of_categories
 
+hyper parameters: alpha, k
+
 * implemented using sparse matrix. maybe inefficient after using SVD for dimension reduction (there will be no zero elements anymore).
 """
 from collections import defaultdict
@@ -23,6 +25,7 @@ if __name__ == '__main__':
     Y_test = unpickle('data/test_min_label.pkl')
     test_len = len(Y_test)
 
+    # hyper parameters
     alpha = 0.8
     k = 10
     predicted = {}

@@ -22,8 +22,8 @@ if __name__ == '__main__':
 
     print 'reshape the matrix...'
     feature_len = max(train_feature_len, test_feature_len)
-    X_train = csr_matrix( (X_train.data, X_train.indices, X_train.indptr), shape=(train_len,feature_len))
-    X_test = csr_matrix( (X_test.data, X_test.indices, X_test.indptr), shape=(test_len,feature_len))
+    X_train = csr_matrix((X_train.data, X_train.indices, X_train.indptr), shape=(train_len ,feature_len))
+    X_test = csr_matrix((X_test.data, X_test.indices, X_test.indptr), shape=(test_len, feature_len))
 
     # iterate over every train document
     print 'calculate inner products between documents...'
