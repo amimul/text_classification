@@ -1,0 +1,13 @@
+code/*.pyc
+code/midi
+result
+.idea
+params
+data
+html
+*.pyc
+*~
+*.swp
+
+# project
+data
