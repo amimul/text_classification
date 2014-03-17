@@ -1,8 +1,8 @@
-'''
+"""
 tf-idf implementation:
     tfidf = log(tf + 1) * idf
     idf = log(N / df) (N: the number of documents, df: the number of documents containing the term)
-'''
+"""
 
 from collections import defaultdict
 import math
