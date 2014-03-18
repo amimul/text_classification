@@ -40,11 +40,15 @@ if __name__ == '__main__':
             progress += 1
 
         # sort by similarity
-        test_col = similarities[:, test_doc_id]
-        if not all(test_col[:, 0] == 0):  # following procedures are only meaningful when there's non-zero similarity train document
-            sort_indices = [i[0] for i in test_col.argsort(axis=0)[::-1].tolist()]
+        test_col = similarities.getcol(test_doc_id).transpose().todense()
+        test_col = csr_matrix(test_col)
+
+        if test_col.nnz > 0:  # following procedures are only meaningful when there's non-zero similarity train document
+            test_col_data = test_col.data
+            test_col_indices = test_col.indices
+            sort_indices = np.argsort(-test_col_data)  # first sort by data (descending), then by indices
             sort_indices = sort_indices[0:k]  # keep only k-nearest neighbors
-            sorted_pairs = [(test_col[i, 0], i) for i in sort_indices]
+            sorted_pairs = [(test_col_data[i], test_col_indices[i]) for i in sort_indices]
 
             # calculate category scores
             scores = defaultdict(int)
