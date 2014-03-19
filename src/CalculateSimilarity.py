@@ -1,6 +1,8 @@
 '''
 calculation of similarities is based on VSM.
 (thus cosine similarity)
+
+* implemented using sparse matrix. maybe inefficient after using SVD for dimension reduction (there will be no zero elements anymore).
 '''
 import math
 from scipy.sparse import csr_matrix
@@ -13,11 +15,11 @@ from utils.util import *
 if __name__ == '__main__':
     # load data
     print 'load train data...'
-    X_train = unpickle('data/train_tfidf.pkl')
+    X_train = unpickle('data/train_min_svd.pkl')
     train_len, train_feature_len = X_train.get_shape()
 
     print 'load test data...'
-    X_test = unpickle('data/test_tfidf.pkl')
+    X_test = unpickle('data/test_min_svd.pkl')
     test_len, test_feature_len = X_test.get_shape()
 
     print 'reshape the matrix...'
@@ -39,4 +41,4 @@ if __name__ == '__main__':
 
     # save similarity
     print 'saving similarities...'
-    enpickle(similarities, 'data/similarity.pkl')
+    enpickle(similarities, 'data/similarity_min_svd.pkl')

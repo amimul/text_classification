@@ -5,8 +5,6 @@ score are calculated by looking at k-nearest neighbors
 decide alpha by minimizing: error = average_num_of_categories_predicted - average_num_of_categories
 
 hyper parameters: alpha, k
-
-* implemented using sparse matrix. maybe inefficient after using SVD for dimension reduction (there will be no zero elements anymore).
 """
 from collections import defaultdict
 import csv

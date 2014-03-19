@@ -19,7 +19,7 @@ import numpy as np
 
 if __name__ == '__main__':
     print 'load data...'
-    similarities = unpickle('data/similarity_min_svd.pkl')
+    similarities = unpickle('data/similarity_svd.pkl')
     Y_train = unpickle('data/train_min_label.pkl')
     train_len = len(Y_train)
     Y_test = unpickle('data/test_min_label.pkl')

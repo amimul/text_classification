@@ -36,7 +36,7 @@ if __name__ == '__main__':
 
         row = X_train.getrow(i)
         for term in row.indices:
-            df[term] += 1
+            df[term + 1] += 1  # add one because feature: 1 is converted into 0 by load_svmlight_file function
     print '\r100 % done!'
 
     # count df for test data
@@ -53,6 +53,9 @@ if __name__ == '__main__':
         for term in row.indices:
             df[term] += 1
     print '\r100 % done!'
+
+    print 'save df...'
+    enpickle(df, 'data/df.pkl')
 
     # calculate tfidf and update value for train data
     base = 2  # base for log function
