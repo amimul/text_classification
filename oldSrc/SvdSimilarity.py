@@ -133,9 +133,9 @@ def calculate_similarity():
 def calculate_similarity_enhanced():
     # calculate partially and combine later
     print 'load document matrix...'
-    X_train = unpickle('data/train_min_svd.pkl')
+    X_train = unpickle('data/train_svd.pkl')
     train_len = X_train.shape[0]
-    X_test = unpickle('data/test_min_svd.pkl')
+    X_test = unpickle('data/test_svd.pkl')
     test_len = X_test.shape[0]
 
     # iterate over every train document (because it causes an error when there are two many non-zero elements)

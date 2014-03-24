@@ -6,6 +6,7 @@ tf-idf implementation:
 
 from collections import defaultdict
 import math
+from scipy.sparse import csr_matrix
 
 from utils.util import *
 
@@ -14,6 +15,8 @@ __author__ = 'kensk8er'
 from sklearn.datasets import load_svmlight_file
 
 if __name__ == '__main__':
+
+    threshold = 10
 
     # load the data
     print 'load train data...'
@@ -36,7 +39,7 @@ if __name__ == '__main__':
 
         row = X_train.getrow(i)
         for term in row.indices:
-            df[term + 1] += 1  # add one because feature: 1 is converted into 0 by load_svmlight_file function
+            df[term] += 1
     print '\r100 % done!'
 
     # count df for test data
@@ -62,6 +65,7 @@ if __name__ == '__main__':
     progress = 0
     index = 0  # index of the sparse matrix to which update value
     print 'calculate tf-idf and update value for train data...'
+    train_mean = X_train.data.mean()
     for i in xrange(train_len):
         # print progress
         if (float(i) / train_len) * 100 > progress:
@@ -75,12 +79,11 @@ if __name__ == '__main__':
             idf = math.log(float(N) / df[term], base)
             tfidf = math.log(tf + 1, base) * idf
 
-            X_train.data[index] = tfidf
+            X_train.data[index] = tfidf if tfidf > threshold else 0
             index += 1
+
+    X_train.eliminate_zeros()
     print '\r100 % done!'
-    print 'saving train data...'
-    enpickle(X_train, 'data/train_tfidf.pkl')
-    print 'done!'
 
     # calculate tfidf and update value for test data
     progress = 0
@@ -99,9 +102,20 @@ if __name__ == '__main__':
             idf = math.log(float(N) / df[term], base)
             tfidf = math.log(tf + 1, base) * idf
 
-            X_test.data[index] = tfidf
+            X_test.data[index] = tfidf if tfidf > threshold else 0
             index += 1
+    X_test.eliminate_zeros()
     print '\r100 % done!'
+
+    print 'reshape the matrix...'
+    feature_len = max(X_train.shape[1], X_test.shape[1])
+    X_train = csr_matrix((X_train.data, X_train.indices, X_train.indptr), shape=(train_len ,feature_len))
+    X_test = csr_matrix((X_test.data, X_test.indices, X_test.indptr), shape=(test_len, feature_len))
+
+    print 'saving train data...'
+    enpickle(X_train, 'data/train_tfidf_sparse.pkl')
+    print 'done!'
+
     print 'saving test data...'
-    enpickle(X_test, 'data/test_tfidf.pkl')
+    enpickle(X_test, 'data/test_tfidf_sparse.pkl')
     print 'done!'
