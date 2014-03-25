@@ -119,7 +119,7 @@ if __name__ == '__main__':
     train_len = X_train.shape[0]
     feature_len = X_train.shape[1]
     X_test = unpickle('data/test_tfidf.pkl')
-    X_test = X_test[100000:120000, :]
+    X_test = X_test[420000: , :]
     test_len = X_test.shape[0]
 
     # calculate norms
@@ -143,4 +143,4 @@ if __name__ == '__main__':
 
     # save similarities
     print 'save similarities...'
-    enpickle(similarities, 'data/similarities_test6.pkl')
+    enpickle(similarities, 'data/similarities_test15.pkl')

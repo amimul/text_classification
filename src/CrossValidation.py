@@ -108,15 +108,15 @@ def calculate_similarity(docs1, docs2, N, k):
 if __name__ == '__main__':
     # hyper parameters
     approximation_num = 3  # decrease this to speed up the computation.
-    neighbors_num = 10  # keep only k-nearest neighbors
-    valid_num = 2000  # 20000
+    neighbors_num = 100  # keep only k-nearest neighbors
+    valid_num = 20000
 
     if sys.argv[1] == 'similarity':
         ## similarity calculation part (preprocessing for cross validation)
 
         # calculate partially and combine later
         print 'load document matrix...'
-        X_train = unpickle('data/train_min_tfidf.pkl')
+        X_train = unpickle('data/train_tfidf.pkl')
         X_test = X_train[-valid_num:, :]
         X_train = X_train[: -valid_num, :]
         train_len = X_train.shape[0]
@@ -149,117 +149,131 @@ if __name__ == '__main__':
 
         print 'load data...'
         similarities = unpickle('data/similarities_valid.pkl')
-        Y_train = unpickle('data/train_min_label.pkl')
+        Y_train = unpickle('data/train_label.pkl')
         Y_test = Y_train[-valid_num:]
         test_len = len(similarities)
+        average_category_num = 0
 
-        # hyper parameters
-        alpha = 0.7
-        k = 5
-        default_category = 314523
+        for k in range(10, 11):
+            for alpha in range(50, 70, 5):
+                # hyper parameters
+                alpha /= float(100)
+                default_category = 24177
+                threshold = 0.1
 
-        predicted = {}
+                print 'k value:', k
+                print 'alpha value:', alpha
 
-        # iterate over every test document
-        progress = 0
-        print 'classify categories for each test document...'
-        for test_doc_id in xrange(test_len):
-            # print progress
-            if (float(test_doc_id) / test_len) * 100 > progress:
-                print '\r', progress, '%',
-                progress += 1
+                predicted = {}
 
-            pairs = similarities[test_doc_id]
+                # iterate over every test document
+                progress = 0
+                for test_doc_id in xrange(test_len):
+                    # print progress
+                    if (float(test_doc_id) / test_len) * 100 > progress:
+                        print '\r', progress, '%',
+                        progress += 1
 
-            if max(pairs)[0] > 0:  # following procedures are only meaningful when there's non-zero similarity train document
-                pairs.sort()
-                pairs.reverse()
-                if len(pairs) > k:
-                    pairs = pairs[0: k]  # keep only k-nearest neighbors
+                    pairs = similarities[test_doc_id]
 
-                # calculate category scores
-                scores = defaultdict(int)
-                for pair in pairs:
-                    similarity = pair[0]
-                    train_doc_id = pair[1]
-                    categories = Y_train[train_doc_id]
+                    if max(pairs)[0] > 0:  # following procedures are only meaningful when there's non-zero similarity train document
+                        pairs.sort()
+                        pairs.reverse()
+                        if len(pairs) > k:
+                            pairs = pairs[0: k]  # keep only k-nearest neighbors
+
+                        # calculate category scores
+                        scores = defaultdict(int)
+                        for pair in pairs:
+                            similarity = pair[0]
+                            train_doc_id = pair[1]
+                            categories = Y_train[train_doc_id]
+
+                            for category in categories:
+                                category = int(category)
+                                scores[category] += similarity  # this algorithm might have room to improve
+
+                        # sort by descending order
+                        scores = scores.items()
+                        scores.sort(key=lambda entry: entry[1])
+                        scores.reverse()
+                        max_score = scores[0][1]
+
+                        # choose top-x categories based on alpha value
+                        categories = []
+                        for score_tuple in scores:
+                            category = score_tuple[0]
+                            score = score_tuple[1]
+
+                            if max_score > 0:  # some test data don't have any feature so max_score could be zero
+                                if score / max_score > alpha:
+                                    categories.append(category)
+                            else:
+                                categories = [default_category]  # TBF: room to improve
+                                break
+
+                    else:  # procedures when there isn't any non-zero similarity train document
+                        categories = [default_category]  # TBF: room to improve
+
+                    # insert categories into predictions
+                    predicted[test_doc_id] = categories
+                    average_category_num += len(predicted[test_doc_id])
+
+                ## calculate Macro F1 Score
+                correct_docs = {}  # key: category, value: doc_ids
+                predicted_docs = {}  # key: category, value: doc_ids
+                average_category_num /= float(test_len)
+
+                # generate correct documents for each category
+                for test_doc_id in xrange(test_len):
+                    categories = Y_test[test_doc_id]
 
                     for category in categories:
                         category = int(category)
-                        scores[category] += similarity  # this algorithm might have room to improve
-
-                # sort by descending order
-                scores = scores.items()
-                scores.sort(key=lambda entry: entry[1])
-                scores.reverse()
-                max_score = scores[0][1]
-
-                # choose top-x categories based on alpha value
-                categories = []
-                for score_tuple in scores:
-                    category = score_tuple[0]
-                    score = score_tuple[1]
-
-                    #if max_score > 0:  # some test data don't have any feature so max_score could be zero
-                    #    if score / max_score > alpha:
-                    #        categories.append(category)
-                    if max_score > 0:
-                        if len(categories) < 3:
-                            categories.append(category)
+                        if not correct_docs.has_key(category):
+                            correct_docs[category] = set([test_doc_id])
                         else:
-                            break
+                            correct_docs[category] |= {test_doc_id}
+
+                # generate predicted documents for each category
+                for test_doc_id in xrange(test_len):
+                    categories = predicted[test_doc_id]
+
+                    for category in categories:
+                        category = int(category)
+                        if not predicted_docs.has_key(category):
+                            predicted_docs[category] = set([test_doc_id])
+                        else:
+                            predicted_docs[category] |= {test_doc_id}
+
+                # calculate Macro Precision
+                correct_category_num = len(correct_docs)
+                macro_precision = 0
+                for category in correct_docs.keys():
+                    if not predicted_docs.has_key(category):
+                        predicted_docs[category] = set()
+                        macro_precision += 0  # add zero for the case when no document is retrieved
                     else:
-                        categories.append(default_category)
+                        macro_precision += float(len(correct_docs[category] & predicted_docs[category])) / len(predicted_docs[category])
+                macro_precision /= correct_category_num
 
-            else:  # procedures when there isn't any non-zero similarity train document
-                categories = [default_category]  # TBF: room to improve
+                # calculate Macro Recall
+                macro_recall = 0
+                for category in correct_docs.keys():
+                    if not predicted_docs.has_key(category):
+                        predicted_docs[category] = set()
+                    macro_recall += float(len(correct_docs[category] & predicted_docs[category]) / len(correct_docs[category]))
+                macro_recall /= correct_category_num
 
-            # insert categories into predictions
-            predicted[test_doc_id] = categories
-        print '\r100 % done!'
+                # calculate MaF
+                print '\rMacro Precision:', macro_precision
+                print 'Macro Recall:', macro_recall
+                MaF = (2 * macro_precision * macro_recall) / (macro_precision + macro_recall)
+                print 'Macro F1-score:', MaF
+                print 'average number of predicted categories:', average_category_num
+                print ''
 
-        ## calculate Macro F1 Score
-        correct_docs = {}  # key: category, value: doc_ids
-        predicted_docs = {}  # key: category, value: doc_ids
-
-        # generate correct documents for each category
-        for test_doc_id in xrange(test_len):
-            categories = Y_test[test_doc_id]
-
-            for category in categories:
-                category = int(category)
-                if not correct_docs.has_key(category):
-                    correct_docs[category] = set(test_doc_id)
-                else:
-                    correct_docs[category] |= {test_doc_id}
-
-        # generate predicted documents for each category
-        for test_doc_id in xrange(test_len):
-            categories = predicted[test_doc_id]
-
-            for category in categories:
-                category = int(category)
-                if not predicted_docs.has_key(category):
-                    predicted_docs[category] = set(test_doc_id)
-                else:
-                    predicted_docs[category] |= {test_doc_id}
-
-        # calculate Macro Precision
-        correct_category_num = len(correct_docs)
-        macro_precision = 0
-        for category in correct_docs.keys():
-            macro_precision += float(len(correct_docs[category] & predicted_docs[category])) / len(predicted_docs[category])
-        macro_precision /= correct_category_num
-
-        # calculate Macro Recall
-        macro_recall = 0
-        for category in correct_docs.keys():
-            macro_recall += float(len(correct_docs[category] & predicted_docs[category]) / len(correct_docs[category]))
-        macro_recall /= correct_category_num
-
-        # calculate MaF
-        MaF = (2 * macro_precision * macro_recall) / (macro_precision + macro_recall)
-        print 'Macro F1-score:', MaF
+        print 'done!'
 
     else:
         print 'input arguments!'

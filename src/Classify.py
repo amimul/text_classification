@@ -17,27 +17,30 @@ from utils.util import *
 import numpy as np
 
 
-def classify(size):
+def classify(similarity_file, output_file, starting_id):
     print 'load data...'
-    starting_id = 0  #20000
-    similarities = unpickle('data/similarities_best.pkl')
+    similarities = unpickle(similarity_file)
     Y_train = unpickle('data/train_label.pkl')
     Y_test = unpickle('data/test_label.pkl')
     test_len = len(similarities)
 
+    print 'load relatives...'
+    relatives = unpickle('data/relatives.pkl')
+
     # hyper parameters
-    alpha = 0.7
-    k = 5
+    alpha = 0.35
+    k = 10
+    threshold = 0.31
+    default_category = 24177  # this is the most frequent category in the train data
     predicted = {}
+    count = 0
 
     # iterate over every test document
-    progress = 0
     print 'classify categories for each test document...'
     for test_doc_id in xrange(test_len):  # test_doc_id starts from 0, thus you need to add 1 to this at the end
         # print progress
-        if (float(test_doc_id) / test_len) * 100 > progress:
-            print '\r', progress, '%',
-            progress += 1
+        if test_doc_id % 1000 == 0:
+            print '\r', float(test_doc_id) / test_len * 100, '%',
 
         # sort by similarity
         #train_doc_ids, similarity_vals = similarities[test_doc_id]
@@ -59,9 +62,11 @@ def classify(size):
                 train_doc_id = pair[1]
                 categories = Y_train[train_doc_id]
 
+                rank = 0
                 for category in categories:
                     category = int(category)
                     scores[category] += similarity  # this algorithm might have room to improve
+                    rank += 1
 
             # sort by descending order
             scores = scores.items()
@@ -71,28 +76,24 @@ def classify(size):
 
             # choose top-x categories based on alpha value
             categories = []
-            previous_score = 0
+            #previous_score = 0
             for score_tuple in scores:
                 category = score_tuple[0]
                 score = score_tuple[1]
 
-                #if max_score > 0:  # some test data don't have any feature so max_score could be zero
-                #    if score / max_score > alpha:
-                #        categories.append(category)
-                if max_score > 0:
-                    if len(categories) < 3:
-                        categories.append(category)
-                    #elif score == previous_score:
-                    #    categories.append(category)
-                    else:
+                if max_score > 0:  # some test data don't have any feature so max_score could be zero
+                    if score > threshold:
+                        if score / max_score > alpha:
+                            categories.append(category)
+                    elif len(categories) == 0:
+                        categories.append(default_category)
+                        count += 1
                         break
                 else:
-                    categories.append(314523)
-
-                previous_score = score
+                    categories.append(default_category)
 
         else:  # procedures when there isn't any non-zero similarity train document
-            categories = [314523]  # TBF: room to improve
+            categories = [default_category]  # TBF: room to improve
 
         # insert categories into predictions
         document_id = int(Y_test[test_doc_id][1])  # test_doc_id starts from zero so you can't directly use it
@@ -101,8 +102,7 @@ def classify(size):
 
     # write to csv file
     print 'save the result into csv file...'
-    filename = 'result/result_best10.csv'
-    writecsv = csv.writer(file(filename, 'wb'), lineterminator='\n')
+    writecsv = csv.writer(file(output_file, 'wb'), lineterminator='\n')
     writecsv.writerow(['Id', 'Predicted'])
 
     predicted = predicted.items()
@@ -116,11 +116,8 @@ def classify(size):
     print 'save into pickle...'
     enpickle(predicted, 'result/predicted.pkl')
 
+    print 'below threshold:', count
+
 if __name__ == '__main__':
-    if len(sys.argv) == 1:
-        size = 'full'
-        classify(size)
-    elif sys.argv[1] == 'min':
-        size = 'min'
-        classify(size)
+    classify(similarity_file='similarity/similarities_test1.pkl', output_file='result/result1.csv', starting_id=0)
 
