@@ -30,11 +30,14 @@ if __name__ == '__main__':
 
     # iterate over every train data
     relatives = {}
+    leaves = set()
+    print 'retrieve all the relatives...'
     for train_doc_id in xrange(train_len):
         if train_doc_id % 1000 == 0:
             print '\r', float(train_doc_id) / train_len * 100, '%',
 
         labels = train_labels[train_doc_id]
+        leaves |= set(labels)
 
         for label in labels:
             label = int(label)
@@ -56,6 +59,19 @@ if __name__ == '__main__':
                     relatives[label] = list(relatives[label])
                 else:
                     relatives[label] = []
+    print '\r100 % done!'
+
+    print 'eliminate non-leaf relatives...'
+    count = 0
+    relative_len = len(relatives)
+    for relative in relatives.items():
+        if count % 100 == 0:
+            print '\r', float(count) / relative_len * 100, '%',
+
+        relatives[relative[0]] = list(set(relative[1]) & leaves)
+        if len(relatives[relative[0]]) > 10:
+            relatives[relative[0]] = relatives[relative[0]][ :20]
+        count += 1
     print '\r100 % done!'
 
     print 'save relatives...'

@@ -17,7 +17,7 @@ from utils.util import *
 import numpy as np
 
 
-def classify(similarity_file, output_file, starting_id):
+def classify(similarity_file, output_file, start_id):
     print 'load data...'
     similarities = unpickle(similarity_file)
     Y_train = unpickle('data/train_label.pkl')
@@ -25,16 +25,15 @@ def classify(similarity_file, output_file, starting_id):
     test_len = len(similarities)
 
     print 'load relatives...'
-    relatives = unpickle('data/relatives.pkl')
+    #relatives = unpickle('data/relatives.pkl')
 
     # hyper parameters
-    alpha = 0.35
+    alpha = 0.25
     k = 10
-    threshold = 0.31
+    threshold = 0.35
     default_category = 24177  # this is the most frequent category in the train data
     predicted = {}
-    count = 0
-    relative_coef = 0.1
+    #relative_coef = 0.1
 
     # iterate over every test document
     print 'classify categories for each test document...'
@@ -62,14 +61,11 @@ def classify(similarity_file, output_file, starting_id):
                     category = int(category)
                     scores[category] += similarity  # this algorithm might have room to improve
 
-            # take the hierarchical information into account
-            for score_tuple in scores.items():
-                category = score_tuple[0]
-                if relatives.has_key(category):
-                    relative_categories = relatives[category]
-                    for relative_category in relative_categories:
-                        if scores.has_key(relative_category):
-                            scores[relative_category] += similarity * relative_coef
+                    # take the hierarchical information into account
+                    #if relatives.has_key(category):
+                    #    relative_categories = relatives[category]
+                    #    for relative_category in relative_categories:
+                    #        scores[relative_category] += similarity * relative_coef
 
             # sort by descending order
             scores = scores.items()
@@ -90,7 +86,6 @@ def classify(similarity_file, output_file, starting_id):
                             categories.append(category)
                     elif len(categories) == 0:
                         categories.append(default_category)
-                        count += 1
                         break
                 else:
                     categories.append(default_category)
@@ -99,29 +94,37 @@ def classify(similarity_file, output_file, starting_id):
             categories = [default_category]  # TBF: room to improve
 
         # insert categories into predictions
-        document_id = int(Y_test[test_doc_id][1])  # test_doc_id starts from zero so you can't directly use it
+        document_id = int(Y_test[test_doc_id + start_id][1])  # test_doc_id starts from zero so you can't directly use it
         predicted[document_id] = categories
     print '\r100 % done!'
 
     # write to csv file
     print 'save the result into csv file...'
-    writecsv = csv.writer(file(output_file, 'wb'), lineterminator='\n')
-    writecsv.writerow(['Id', 'Predicted'])
+    writecsv = csv.writer(file(output_file, 'a+b'), lineterminator='\n')
 
     predicted = predicted.items()
     predicted.sort()
 
     for pred in predicted:
-        document_id = pred[0] + starting_id
+        document_id = pred[0]
         categories = " ".join(map(str, pred[1]))
         writecsv.writerow([document_id, categories])
 
     print 'save into pickle...'
     enpickle(predicted, 'result/predicted.pkl')
 
-    print 'below threshold:', count
+    return test_len
 
 if __name__ == '__main__':
+    output_file_name = 'result/result_total.csv'
+    similarity_file_name = 'similarity/similarities_test'
 
-    classify(similarity_file='similarity/similarities_test2.pkl', output_file='result/result2.csv', starting_id=20000)
+    # initial write
+    writecsv = csv.writer(file(output_file_name, 'wb'), lineterminator='\n')
+    writecsv.writerow(['Id', 'Predicted'])
+
+    start_id = 0
+    for i in range(1, 16):
+        end_id = classify(similarity_file=similarity_file_name+str(i)+'.pkl', output_file=output_file_name, start_id=start_id)
+        start_id += end_id
 
